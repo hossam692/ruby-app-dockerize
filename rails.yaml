@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: drkiq-deployment
+  labels:
+    app: drkiq
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: drkiq
+  template:
+    metadata:
+      labels:
+        app: drkiq
+    spec:
+      containers:
+      - name: drkiq
+        image: ruby:2.7.2
+        ports:
+        - containerPort: 8010
+        command: ["/bin/sh", "-c"]
+        args:
+          - addgroup --gid 1000 user;
+            adduser --disabled-password --gecos '' --uid 1000 --gid 1000 user;
+            curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg -o /root/yarn-pubkey.gpg && apt-key add /root/yarn-pubkey.gpg;
+            echo "deb https://dl.yarnpkg.com/debian/ stable main" > /etc/apt/sources.list.d/yarn.list;
+            apt-get update && apt-get install -y --no-install-recommends nodejs yarn;
+            mkdir -p /opt/app;
+            cp drkiq/ .;
+            rm -rf node_modules vendor;
+            gem install rails bundler;
+            bundle install;
+            yarn install;
+            chown -R user:user /opt/apps;
+            bundle exec unicorn -c config/unicorn.rb;
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: drkiq-configmap
+              key: DATABASE_URL
+        - name: CACHE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: drkiq-configmap
+              key: CACHE_URL
+        - name: JOB_WORKER_URL
+          valueFrom:
+            configMapKeyRef:
+              name: drkiq-configmap
+              key: JOB_WORKER_URL

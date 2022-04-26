@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:latest
+        ports:
+        - containerPort: 8020
+        volumeMounts:
+        - name: mnt
+          mountPath: /etc/nginx/conf.d/reverse-proxy.conf
+          subPath: reverse-proxy-conf
+        command: ["/bin/sh", "-c"]
+        args: ["nginx", "-g", "daemon off;"]
+      volumes:
+      - name: mnt
+        configMap:
+          name: nginx-configmap
+
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+spec:
+  selector:
+    app: nginx
+  type: LoadBalancer
+  ports:
+    - protocol: TCP
+      port: 8020
+      targetPort: 8020
+      nodePort: 30000
